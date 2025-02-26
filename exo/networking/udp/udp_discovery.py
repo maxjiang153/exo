@@ -3,6 +3,7 @@ import json
 import socket
 import time
 import traceback
+import struct
 from typing import List, Dict, Callable, Tuple, Coroutine, Optional
 from exo.networking.discovery import Discovery
 from exo.networking.peer_handle import PeerHandle
@@ -207,14 +208,14 @@ class UDPDiscovery(Discovery):
         if interface_type != "Ethernet":
           continue
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-          sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        except AttributeError:
-          pass
-        sock.bind((addr, 0))
+        sock.bind(("", self.listen_port))
+        multicast_group = socket.inet_aton("239.0.0.1")
+        networkInterface = socket.inet_aton(addr)
+        mreq = struct.pack("4s4s", multicast_group, networkInterface)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
         print(f"task listen addr:{addr}")
         await asyncio.get_event_loop().create_datagram_endpoint(lambda: ListenProtocol(self.on_listen_message), local_addr=(addr, self.listen_port), sock=sock)
         if DEBUG_DISCOVERY >= 2: print("Started listen task")
