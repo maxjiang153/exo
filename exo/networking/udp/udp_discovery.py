@@ -102,6 +102,9 @@ class UDPDiscovery(Discovery):
     while True:
       for addr, interface_name in get_all_ip_addresses_and_interfaces():
         interface_priority, interface_type = await get_interface_priority_and_type(interface_name)
+        if interface_type != "Ethernet":
+          continue
+
         message = json.dumps({
           "type": "discovery",
           "node_id": self.node_id,
@@ -199,8 +202,22 @@ class UDPDiscovery(Discovery):
         if peer_id in self.known_peers: self.known_peers[peer_id] = (self.known_peers[peer_id][0], self.known_peers[peer_id][1], time.time(), peer_prio)
 
   async def task_listen_for_peers(self):
-    await asyncio.get_event_loop().create_datagram_endpoint(lambda: ListenProtocol(self.on_listen_message), local_addr=("0.0.0.0", self.listen_port))
-    if DEBUG_DISCOVERY >= 2: print("Started listen task")
+    for addr, interface_name in get_all_ip_addresses_and_interfaces():
+        interface_priority, interface_type = await get_interface_priority_and_type(interface_name)
+        if interface_type != "Ethernet":
+          continue
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+          sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        except AttributeError:
+          pass
+        sock.bind((addr, 0))
+        print(f"task listen addr:{addr}")
+        await asyncio.get_event_loop().create_datagram_endpoint(lambda: ListenProtocol(self.on_listen_message), local_addr=(addr, self.listen_port), sock=sock)
+        if DEBUG_DISCOVERY >= 2: print("Started listen task")
 
   async def task_cleanup_peers(self):
     while True:
