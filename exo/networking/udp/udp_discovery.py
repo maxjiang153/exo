@@ -26,8 +26,9 @@ class ListenProtocol(asyncio.DatagramProtocol):
 def get_broadcast_address(ip_addr: str) -> str:
   try:
     # Split IP into octets and create broadcast address for the subnet
-    ip_parts = ip_addr.split('.')
-    return f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}.255"
+    #ip_parts = ip_addr.split('.')
+    #return f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}.255"
+    return "239.0.0.1"
   except:
     return "255.255.255.255"
 
