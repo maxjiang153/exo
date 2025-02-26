@@ -204,7 +204,7 @@ class UDPDiscovery(Discovery):
 
   async def task_listen_for_peers(self):
     for addr, interface_name in get_all_ip_addresses_and_interfaces():
-        interface_priority, interface_type = await get_interface_priority_and_type(interface_name)
+        interface_type = await get_interface_priority_and_type(interface_name)
         if interface_type != "Ethernet":
           continue
 
@@ -217,7 +217,7 @@ class UDPDiscovery(Discovery):
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
         print(f"task listen addr:{addr}")
-        await asyncio.get_event_loop().create_datagram_endpoint(lambda: ListenProtocol(self.on_listen_message), local_addr=(addr, self.listen_port), sock=sock)
+        await asyncio.get_event_loop().create_datagram_endpoint(lambda: ListenProtocol(self.on_listen_message), sock=sock)
         if DEBUG_DISCOVERY >= 2: print("Started listen task")
 
   async def task_cleanup_peers(self):
